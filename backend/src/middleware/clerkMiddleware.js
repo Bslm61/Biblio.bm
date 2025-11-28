@@ -5,13 +5,23 @@ import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 export const requireAuth = ClerkExpressRequireAuth();
 
 
-// Optional: Helper to extract user ID from token
-// export const getUserIdFromAuth = (req) => {
-//   return req.auth?.userId;
-// };
+// ============================================
+// HELPER - Get User ID from Clerk Token
+// ============================================
+export const getUserIdFromAuth = (req) => {
+  return req.auth?.userId;
+};
 
+// ============================================
+// HELPER - Get Email from Clerk Token
+// ============================================
+export const getEmailFromAuth = (req) => {
+  return req.auth?.emailAddresses?.[0]?.emailAddress;
+};
 
-// Optional: Helper to extract email from token
-// export const getEmailFromAuth = (req) => {
-//   return req.auth?.emailAddresses?.[0]?.emailAddress;
-// };
+// ============================================
+// HELPER - Get Full Auth Object
+// ============================================
+export const getAuthFromRequest = (req) => {
+  return req.auth || null;
+};

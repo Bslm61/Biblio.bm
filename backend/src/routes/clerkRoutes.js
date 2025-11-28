@@ -4,7 +4,8 @@ import {
   getUserIdFromAuth,
   getEmailFromAuth,
 } from "../middleware/clerkMiddleware.js";
-import User from "../models/User.js";
+
+import User from "../models/UserModel/User.js";
 
 const router = express.Router();
 
@@ -30,33 +31,32 @@ router.post("/sync-user", requireAuth, async (req, res) => {
       // Create new user in MongoDB
       user = new User({
         clerkId,
-        email
+        email,
       });
       await user.save();
-     console.log(`✅ New user created: ${email}`);
+      console.log(`✅ New user created: ${email}`);
     } else {
       console.log(`✅ User already exists: ${email}`);
     }
 
-    res.status(200).json({ 
-      message: 'User synced successfully',
+    res.status(200).json({
+      message: "User synced successfully",
       user: {
         _id: user._id,
         clerkId: user.clerkId,
         email: user.email,
         username: user.username,
-        profile: user.profile
-      }
+        profile: user.profile,
+      },
     });
   } catch (error) {
-    console.error('Error syncing user:', error);
-    res.status(500).json({ 
-      error: 'Failed to sync user',
-      details: error.message
+    console.error("Error syncing user:", error);
+    res.status(500).json({
+      error: "Failed to sync user",
+      details: error.message,
     });
   }
 });
-
 
 //GET /api/clerk/me
 
@@ -69,7 +69,7 @@ router.get("/me", requireAuth, async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
-        error: 'User not found'
+        error: "User not found",
       });
     }
 
@@ -84,14 +84,14 @@ router.get("/me", requireAuth, async (req, res) => {
         preferences: user.preferences,
         isActive: user.isActive,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
+        updatedAt: user.updatedAt,
+      },
     });
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error("Error fetching user:", error);
     res.status(500).json({
-      error: 'Failed to fetch user',
-      details: error.message
+      error: "Failed to fetch user",
+      details: error.message,
     });
   }
 });
@@ -108,42 +108,39 @@ router.put("/me", requireAuth, async (req, res) => {
     const updateData = {};
 
     if (username !== undefined) updateData.username = username;
-    if (bio !== undefined) updateData['profile.bio'] = bio;
-    if (avatar !== undefined) updateData['profile.avatar'] = avatar;
-    if (theme !== undefined) updateData['preferences.theme'] = theme;
-    if (notifications !== undefined) updateData['preferences.notifications'] = notifications;
+    if (bio !== undefined) updateData["profile.bio"] = bio;
+    if (avatar !== undefined) updateData["profile.avatar"] = avatar;
+    if (theme !== undefined) updateData["preferences.theme"] = theme;
+    if (notifications !== undefined)
+      updateData["preferences.notifications"] = notifications;
 
-    const user = await User.findOneAndUpdate(
-      { clerkId },
-      updateData,
-      { 
-        new: true,
-        runValidators: true
-      }
-    );
+    const user = await User.findOneAndUpdate({ clerkId }, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!user) {
       return res.status(404).json({
-        error: 'User not found'
+        error: "User not found",
       });
     }
 
     res.json({
-      message: 'User profile updated successfully',
+      message: "User profile updated successfully",
       user: {
         _id: user._id,
         clerkId: user.clerkId,
         email: user.email,
         username: user.username,
         profile: user.profile,
-        preferences: user.preferences
-      }
+        preferences: user.preferences,
+      },
     });
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error("Error updating user:", error);
     res.status(500).json({
-      error: 'Failed to update user',
-      details: error.message
+      error: "Failed to update user",
+      details: error.message,
     });
   }
 });
