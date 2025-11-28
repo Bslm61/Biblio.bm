@@ -2,10 +2,14 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import clerkRoutes from './routes/clerkRoutes.js';
 
 dotenv.config();
 
 const app = express();
+
+//Clerk
+app.use('/api/clerk', clerkRoutes);
 
 // Middleware
 app.use(cors({

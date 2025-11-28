@@ -1,46 +1,62 @@
 import mongoose from "mongoose";
-import { type } from "os";
 
-const userSchema = new mongoose.schema(
+const userSchema = new mongoose.Schema(
   {
     clerkId: {
       type: String,
-      required: true,
+      required: [true, "Clerk ID is required"],
       unique: true,
-      // ^-- Clerk generates this ID
-      // Links your MongoDB user to Clerk user
     },
 
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
-      // ^-- Clerk provides this
+      lowercase: true,
     },
 
     username: {
       type: String,
-      // ^-- Optional custom username
+      minlength: [3, "Username must be at least 3 characters"],
+      maxlength: [30, "Username cannot exceed 30 characters"],
+      sparse: true,
     },
 
     profile: {
-      bio: String,
-      avatar: String,
-      // ^-- Your custom profile data
+      bio: {
+        type: String,
+        maxlength: [500, "Bio cannot exceed 500 characters"],
+        default: "",
+      },
+      avatar: {
+        type: String,
+        default: null,
+      },
     },
 
     wallet: {
       balance: {
         type: Number,
         default: 0,
+        min: [0, "Balance cannot be negative"],
       },
-      // ^-- Your custom data (rentals, balance, etc.)
+      totalSpent: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
     },
 
     preferences: {
-      theme: String,
-      notifications: Boolean,
-      // ^-- Custom preferences
+      theme: {
+        type: String,
+        enum: ["light", "dark"],
+        default: "light",
+      },
+      notifications: {
+        type: Boolean,
+        default: true,
+      },
     },
 
     createdAt: {
@@ -52,11 +68,19 @@ const userSchema = new mongoose.schema(
       type: Date,
       default: Date.now,
     },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
 
+// Indexes
+userSchema.index({ clerkId: 1 });
+userSchema.index({ email: 1 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 export default User;
