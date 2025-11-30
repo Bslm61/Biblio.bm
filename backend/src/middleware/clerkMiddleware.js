@@ -1,25 +1,32 @@
+// src/middleware/clerkMiddleware.js
+
 import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 
-// Middleware that requires authentication
+// Main middleware - requires authentication
 export const requireAuth = ClerkExpressRequireAuth();
 
-// ============================================
-// HELPER - Get User ID from Clerk Token
-// ============================================
+// Helper - get user ID from Clerk token
 export const getUserIdFromAuth = (req) => {
+  console.log('Auth object:', req.auth); // Debug log
   return req.auth?.userId;
 };
 
-// ============================================
-// HELPER - Get Email from Clerk Token
-// ============================================
+// Helper - get email from Clerk token (FIXED)
 export const getEmailFromAuth = (req) => {
-  return req.auth?.emailAddresses?.[0]?.emailAddress;
+  console.log('Full auth object:', JSON.stringify(req.auth, null, 2)); // Debug
+  
+  // Try multiple ways to get email
+  const email = 
+    req.auth?.emailAddresses?.[0]?.emailAddress ||
+    req.auth?.primaryEmailAddressId ||
+    req.auth?.email ||
+    null;
+    
+  console.log('Extracted email:', email); // Debug
+  return email;
 };
 
-// ============================================
-// HELPER - Get Full Auth Object
-// ============================================
+// Helper - get full auth object
 export const getAuthFromRequest = (req) => {
   return req.auth || null;
 };

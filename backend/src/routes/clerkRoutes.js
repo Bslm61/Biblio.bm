@@ -2,12 +2,33 @@ import express from "express";
 import {
   requireAuth,
   getUserIdFromAuth,
-  getEmailFromAuth,
 } from "../middleware/clerkMiddleware.js";
-
 import User from "../models/UserModel/User.js";
 
 const router = express.Router();
+
+// Helper function to get user from Clerk API
+const getClerkUser = async (userId) => {
+  try {
+    const response = await fetch(
+      `https://api.clerk.com/v1/users/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch user from Clerk");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching Clerk user:", error);
+    return null;
+  }
+};
 
 // POST /api/clerk/sync-user
 // Purpose: Create or update user in MongoDB when they login
@@ -15,23 +36,41 @@ const router = express.Router();
 
 router.post("/sync-user", requireAuth, async (req, res) => {
   try {
-    const clerkId = getUserIdFromAuth(req);
-    const email = getEmailFromAuth(req);
+    const userId = getUserIdFromAuth(req);
 
-    if (!clerkId || !email) {
+    if (!userId) {
       return res.status(400).json({
-        error: "Missing user information from Clerk",
+        error: "Missing user ID from Clerk",
+      });
+    }
+
+    // Get user data from Clerk API
+    const clerkUser = await getClerkUser(userId);
+
+    if (!clerkUser) {
+      return res.status(400).json({
+        error: "Could not fetch user from Clerk",
+      });
+    }
+
+    const email = clerkUser.email_addresses?.[0]?.email_address;
+    const username = clerkUser.username;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "User does not have email",
       });
     }
 
     // Check if user exists in MongoDB
-    let user = await User.findOne({ clerkId });
+    let user = await User.findOne({ clerkId: userId });
 
     if (!user) {
       // Create new user in MongoDB
       user = new User({
-        clerkId,
-        email,
+        clerkId: userId,
+        email: email,
+        username: username || null,
       });
       await user.save();
       console.log(`✅ New user created: ${email}`);
@@ -59,17 +98,23 @@ router.post("/sync-user", requireAuth, async (req, res) => {
 });
 
 //GET /api/clerk/me
-
 // Get current user profile
+
 router.get("/me", requireAuth, async (req, res) => {
   try {
-    const clerkId = getUserIdFromAuth(req);
+    const userId = getUserIdFromAuth(req);
 
-    const user = await User.findOne({ clerkId });
+    if (!userId) {
+      return res.status(400).json({
+        error: "Missing user ID from Clerk",
+      });
+    }
+
+    const user = await User.findOne({ clerkId: userId });
 
     if (!user) {
       return res.status(404).json({
-        error: "User not found",
+        error: "User not found in MongoDB",
       });
     }
 
@@ -97,11 +142,18 @@ router.get("/me", requireAuth, async (req, res) => {
 });
 
 //PUT /api/clerk/me
-
 // Update user profile
+
 router.put("/me", requireAuth, async (req, res) => {
   try {
-    const clerkId = getUserIdFromAuth(req);
+    const userId = getUserIdFromAuth(req);
+
+    if (!userId) {
+      return res.status(400).json({
+        error: "Missing user ID from Clerk",
+      });
+    }
+
     const { username, bio, avatar, theme, notifications } = req.body;
 
     // Build update object (only allow certain fields)
@@ -114,10 +166,14 @@ router.put("/me", requireAuth, async (req, res) => {
     if (notifications !== undefined)
       updateData["preferences.notifications"] = notifications;
 
-    const user = await User.findOneAndUpdate({ clerkId }, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const user = await User.findOneAndUpdate(
+      { clerkId: userId },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!user) {
       return res.status(404).json({
