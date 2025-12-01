@@ -1,7 +1,9 @@
 import express from "express";
 import {
   requireAuth,
-  getUserIdFromAuth,
+  getUserId,
+  getEmail,
+  getAuthFromRequest,
 } from "../middleware/clerkMiddleware.js";
 import User from "../models/UserModel/User.js";
 
@@ -31,12 +33,11 @@ const getClerkUser = async (userId) => {
 };
 
 // POST /api/clerk/sync-user
-// Purpose: Create or update user in MongoDB when they login
-// Called from frontend after Clerk authentication
+// Create or update user in MongoDB when they login
 
 router.post("/sync-user", requireAuth, async (req, res) => {
   try {
-    const userId = getUserIdFromAuth(req);
+    const userId = getUserId(req);
 
     if (!userId) {
       return res.status(400).json({
@@ -97,12 +98,12 @@ router.post("/sync-user", requireAuth, async (req, res) => {
   }
 });
 
-//GET /api/clerk/me
+// GET /api/clerk/me
 // Get current user profile
 
 router.get("/me", requireAuth, async (req, res) => {
   try {
-    const userId = getUserIdFromAuth(req);
+    const userId = getUserId(req);
 
     if (!userId) {
       return res.status(400).json({
@@ -141,12 +142,12 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
-//PUT /api/clerk/me
+// PUT /api/clerk/me
 // Update user profile
 
 router.put("/me", requireAuth, async (req, res) => {
   try {
-    const userId = getUserIdFromAuth(req);
+    const userId = getUserId(req);
 
     if (!userId) {
       return res.status(400).json({

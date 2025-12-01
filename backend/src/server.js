@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import clerkRoutes from "./routes/clerkRoutes.js";
+import bookRoutes from "./routes/bookRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 
@@ -31,6 +33,12 @@ mongoose
 
 //Clerk Routes
 app.use("/api/clerk", clerkRoutes);
+
+// BookRoutes
+app.use("/api/books", bookRoutes);
+
+// UserRoutes
+app.use("/api/users", userRoutes);
 
 // Health Check
 app.get("/api/health", (req, res) => {
