@@ -2,8 +2,6 @@ import express from "express";
 import {
   requireAuth,
   getUserId,
-  getEmail,
-  getAuthFromRequest,
 } from "../middleware/clerkMiddleware.js";
 import User from "../models/UserModel/User.js";
 
