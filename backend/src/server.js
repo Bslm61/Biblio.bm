@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import clerkRoutes from "./routes/clerkRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import rentalRoutes from "./routes/rentalRoutes.js";
+
 
 dotenv.config();
 
@@ -31,6 +33,7 @@ mongoose
 app.use("/api/clerk", clerkRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/rentals", rentalRoutes);
 
 // Health Check
 app.get("/api/health", (req, res) => {
