@@ -6,7 +6,8 @@ import clerkRoutes from "./routes/clerkRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import rentalRoutes from "./routes/rentalRoutes.js";
-
+import paymentRoutes from "./routes/paymentRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 dotenv.config();
 
@@ -34,6 +35,8 @@ app.use("/api/clerk", clerkRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/rentals", rentalRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // Health Check
 app.get("/api/health", (req, res) => {

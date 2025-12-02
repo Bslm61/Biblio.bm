@@ -1,4 +1,3 @@
-// src/routes/rentalRoutes.js
 
 import express from "express";
 import {

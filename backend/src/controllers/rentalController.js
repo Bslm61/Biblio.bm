@@ -1,4 +1,3 @@
-// src/controllers/rentalController.js
 
 import Rental from "../models/RentalModel/Rental.js";
 import Book from "../models/BookModel/Book.js";
