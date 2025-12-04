@@ -1,367 +1,540 @@
-# 📚 BIBLIOTHEQUE-BM API Documentation
-
-## Quick Start for Frontend Team
+# 📚 BIBLIOTHEQUE-BM - Complete API Documentation
 
 **API Base URL:** `http://localhost:5000/api`
 
-**Authentication:** All endpoints (except `/health`) require Clerk JWT token in header:
-```
-Authorization: Bearer [clerk_jwt_token]
-```
+---
+
+## ⚡ Quick Reference
+
+| Action | Method | Endpoint | Auth |
+|--------|--------|----------|------|
+| Get books | GET | `/books?page=1&limit=12` | ❌ |
+| Search | GET | `/books/search/:query` | ❌ |
+| Get book | GET | `/books/:id` | ❌ |
+| Create book | POST | `/books` | ✅ Admin |
+| Update book | PUT | `/books/:id` | ✅ Admin |
+| Delete book | DELETE | `/books/:id` | ✅ Admin |
+| Get rentals | GET | `/rentals` | ✅ |
+| Create rental | POST | `/rentals` | ✅ |
+| Get rental | GET | `/rentals/:id` | ✅ |
+| Update progress | PUT | `/rentals/:id/reading-progress` | ✅ |
+| Cancel rental | DELETE | `/rentals/:id` | ✅ |
+| Create payment | POST | `/payments/create-payment-intent` | ✅ |
+| Confirm payment | POST | `/payments/confirm-payment` | ✅ |
+| Get payments | GET | `/payments/history` | ✅ |
+| Refund | POST | `/payments/refund` | ✅ |
+| Create review | POST | `/reviews` | ✅ |
+| Get book reviews | GET | `/reviews/book/:id` | ❌ |
+| Get my reviews | GET | `/reviews/user/my-reviews` | ✅ |
+| Update review | PUT | `/reviews/:id` | ✅ |
+| Delete review | DELETE | `/reviews/:id` | ✅ |
+| Mark helpful | POST | `/reviews/:id/helpful` | ✅ |
+| Sync user | POST | `/clerk/sync-user` | ✅ |
+| Get profile | GET | `/clerk/me` | ✅ |
+| Update profile | PUT | `/clerk/me` | ✅ |
+| Health | GET | `/health` | ❌ |
 
 ---
 
-## 🔐 Authentication Endpoints
+## 🔐 Authentication
 
-### 1. Sync User Profile
-**Endpoint:** `POST /clerk/sync-user`
+### Getting Token (React)
+```typescript
+import { useAuth } from "@clerk/clerk-react";
 
-**Purpose:** Create/update user in MongoDB when they login (call this after Clerk login)
+const { getToken } = useAuth();
+const token = await getToken();
 
-**Headers:**
+// Use in headers
+headers: { Authorization: `Bearer ${token}` }
 ```
-Authorization: Bearer [clerk_token]
-Content-Type: application/json
+
+### Sync User After Login
+```typescript
+POST /clerk/sync-user
+Authorization: Bearer [token]
 ```
+Creates/updates user in MongoDB from Clerk
+
+---
+
+## 📚 Phase 4: Books
+
+### Get All Books
+```
+GET /books?page=1&limit=12&genre=Fiction&minPrice=1&maxPrice=5&sortBy=createdAt
+```
+**Query Params:** `page`, `limit`, `genre`, `minPrice`, `maxPrice`, `sortBy`
 
 **Response:**
 ```json
 {
-  "message": "User synced successfully",
-  "user": {
-    "_id": "mongodb_id",
-    "clerkId": "user_xxx",
-    "email": "user@example.com",
-    "username": null,
-    "profile": {
-      "bio": "",
-      "avatar": null
+  "books": [
+    {
+      "_id": "string",
+      "title": "string",
+      "author": "string",
+      "description": "string",
+      "genre": "string",
+      "coverImage": "url",
+      "rentalPricePerDay": number,
+      "totalReviews": number,
+      "averageRating": number,
+      "pageCount": number,
+      "publishedDate": "date",
+      "isAvailable": boolean
     }
+  ],
+  "total": number,
+  "page": number,
+  "pages": number,
+  "limit": number
+}
+```
+
+### Get Genres
+```
+GET /books/genres
+```
+
+### Search Books
+```
+GET /books/search/[query]?limit=20
+```
+Searches title, author, genre
+
+### Get Single Book
+```
+GET /books/:id
+```
+
+### Create Book (Admin)
+```
+POST /books
+Authorization: Bearer [admin_token]
+
+{
+  "title": "string (2+ chars)",
+  "author": "string",
+  "description": "string (10-5000 chars)",
+  "genre": "Fiction|Non-Fiction|Science|...",
+  "coverImage": "url",
+  "pdfUrl": "url",
+  "rentalPricePerDay": number,
+  "pageCount": number,
+  "publishedDate": "date"
+}
+```
+**Response:** 201 with book object
+
+### Update Book (Admin)
+```
+PUT /books/:id
+Authorization: Bearer [admin_token]
+
+{ "title": "new title", "rentalPricePerDay": 4.99 }
+```
+
+### Delete Book (Admin)
+```
+DELETE /books/:id
+Authorization: Bearer [admin_token]
+```
+**Response:** `{ "message": "Book deleted successfully" }`
+
+---
+
+## 🏆 Phase 5: Rentals
+
+### Create Rental
+```
+POST /rentals
+Authorization: Bearer [token]
+
+{
+  "bookId": "book_id",
+  "rentalDays": number (1-7)
+}
+```
+**Response:** 201
+```json
+{
+  "message": "Rental created successfully",
+  "rental": {
+    "_id": "rental_id",
+    "book": "title",
+    "totalPrice": number,
+    "rentalDays": number,
+    "rentalEndDate": "date",
+    "status": "active"
+  }
+}
+```
+**Errors:**
+- 400: rentalDays must be 1-7
+- 400: Already have active rental for this book
+
+### Get My Rentals
+```
+GET /rentals?status=active
+Authorization: Bearer [token]
+
+Query: status = "active" | "expired" | "completed" (optional)
+```
+
+### Get Single Rental
+```
+GET /rentals/:id
+Authorization: Bearer [token]
+```
+**Response:**
+```json
+{
+  "rental": {
+    "_id": "rental_id",
+    "book": { "title", "author", "coverImage" },
+    "totalPrice": number,
+    "daysRemaining": number,
+    "status": "active",
+    "readingProgress": number,
+    "pdfUrl": "url (only if active)"
   }
 }
 ```
 
-**Error (400):**
-```json
+### Update Reading Progress
+```
+PUT /rentals/:id/reading-progress
+Authorization: Bearer [token]
+
 {
-  "error": "Missing user information from Clerk"
+  "progress": number (0-100)
 }
 ```
 
-**When to call:** Right after Clerk authentication succeeds
+### Cancel Rental
+```
+DELETE /rentals/:id
+Authorization: Bearer [token]
+```
+**Response:** `{ "message": "Rental cancelled successfully" }`
 
 ---
 
-### 2. Get Current User Profile
-**Endpoint:** `GET /clerk/me`
+## 💳 Phase 6: Payments
 
-**Purpose:** Get logged-in user's full profile
-
-**Headers:**
+### Create Payment Intent
 ```
-Authorization: Bearer [clerk_token]
-Content-Type: application/json
-```
+POST /payments/create-payment-intent
+Authorization: Bearer [token]
 
+{
+  "rentalId": "rental_id"
+}
+```
 **Response:**
 ```json
 {
-  "user": {
-    "_id": "mongodb_id",
-    "clerkId": "user_xxx",
-    "email": "user@example.com",
-    "username": "john_doe",
-    "profile": {
-      "bio": "I love reading",
-      "avatar": "https://example.com/avatar.jpg"
-    },
-    "wallet": {
-      "balance": 0,
-      "totalSpent": 0
-    },
-    "preferences": {
-      "theme": "light",
-      "notifications": true
-    },
-    "isActive": true,
-    "createdAt": "2024-01-16T10:30:00.000Z",
-    "updatedAt": "2024-01-16T10:30:00.000Z"
-  }
+  "message": "Payment intent created",
+  "clientSecret": "string",
+  "paymentIntentId": "pi_xxx",
+  "amount": number,
+  "rentalId": "rental_id"
 }
 ```
 
-**Error (404):**
-```json
+### Confirm Payment
+```
+POST /payments/confirm-payment
+Authorization: Bearer [token]
+
 {
-  "error": "User not found"
+  "paymentIntentId": "pi_xxx"
 }
 ```
 
-**When to call:** On app load to populate user dashboard
-
----
-
-### 3. Update User Profile
-**Endpoint:** `PUT /clerk/me`
-
-**Purpose:** Update user's bio, avatar, username, theme, notifications
-
-**Headers:**
+### Get Payment History
 ```
-Authorization: Bearer [clerk_token]
-Content-Type: application/json
+GET /payments/history
+Authorization: Bearer [token]
 ```
-
-**Request Body:**
-```json
-{
-  "username": "new_username",
-  "bio": "Updated bio",
-  "avatar": "https://example.com/new-avatar.jpg",
-  "theme": "dark",
-  "notifications": false
-}
-```
-
-**Note:** All fields are optional - send only what you want to update
-
 **Response:**
 ```json
 {
-  "message": "User profile updated successfully",
-  "user": {
-    "_id": "mongodb_id",
-    "clerkId": "user_xxx",
-    "email": "user@example.com",
-    "username": "new_username",
-    "profile": {
-      "bio": "Updated bio",
-      "avatar": "https://example.com/new-avatar.jpg"
-    },
-    "preferences": {
-      "theme": "dark",
-      "notifications": false
+  "payments": [
+    {
+      "_id": "payment_id",
+      "amount": number,
+      "status": "succeeded|failed|pending",
+      "createdAt": "date"
     }
-  }
+  ],
+  "total": number
 }
 ```
 
-**When to call:** When user updates their profile settings
+### Refund Payment
+```
+POST /payments/refund
+Authorization: Bearer [token]
+
+{
+  "paymentId": "payment_id"
+}
+```
+
+---
+
+## ⭐ Phase 7: Reviews
+
+### Create Review
+```
+POST /reviews
+Authorization: Bearer [token]
+
+{
+  "bookId": "book_id",
+  "rating": number (1-5),
+  "reviewText": "string (10-2000 chars)"
+}
+```
+**Requirements:** User must have rented the book
+
+**Errors:**
+- 400: rating must be 1-5
+- 400: reviewText 10-2000 chars
+- 400: Must rent before reviewing
+- 400: Already reviewed this book
+
+### Get Book Reviews
+```
+GET /reviews/book/:bookId?sortBy=newest&page=1&limit=10
+
+Query: sortBy = "newest" | "helpful" | "rating"
+```
+
+### Get My Reviews
+```
+GET /reviews/user/my-reviews
+Authorization: Bearer [token]
+```
+
+### Update Review
+```
+PUT /reviews/:id
+Authorization: Bearer [token]
+
+{
+  "rating": number?,
+  "reviewText": "string?"
+}
+```
+
+### Delete Review
+```
+DELETE /reviews/:id
+Authorization: Bearer [token]
+```
+
+### Mark Helpful
+```
+POST /reviews/:id/helpful
+Authorization: Bearer [token]
+```
+
+---
+
+## 👤 User Profile
+
+### Sync User (After Login)
+```
+POST /clerk/sync-user
+Authorization: Bearer [token]
+```
+Creates/updates user in MongoDB
+
+### Get User Profile
+```
+GET /clerk/me
+Authorization: Bearer [token]
+```
+
+### Update User Profile
+```
+PUT /clerk/me
+Authorization: Bearer [token]
+
+{
+  "username": "string?",
+  "bio": "string?",
+  "avatar": "url?",
+  "theme": "light|dark?",
+  "notifications": boolean?
+}
+```
 
 ---
 
 ## 🏥 Health Check
 
-### Check Backend Status
-**Endpoint:** `GET /health`
-
-**Purpose:** Verify backend is running and database is connected
-
-**No authentication needed**
+```
+GET /health
+```
+**No auth needed**
 
 **Response:**
 ```json
 {
   "message": "✅ Backend Running",
-  "database": "✅ connected",
-  "timestamp": "2024-01-16T10:30:00.000Z",
+  "database": "✅ Connected",
+  "timestamp": "date",
   "environment": "development"
 }
 ```
 
-**Use case:** App startup to verify connection
-
 ---
 
-## 📋 Future Endpoints (Coming Soon)
+## 📊 TypeScript Types
 
-These endpoints are being built and will be documented soon:
+```typescript
+// Book
+interface Book {
+  _id: string;
+  title: string;
+  author: string;
+  description: string;
+  genre: string;
+  coverImage: string;
+  pdfUrl: string;
+  rentalPricePerDay: number;
+  totalReviews: number;
+  averageRating: number;
+  pageCount: number;
+  publishedDate: string;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
-- `GET /books` - Get all books (with pagination, filtering)
-- `GET /books/:id` - Get single book details
-- `POST /rentals/create-checkout` - Start book rental
-- `GET /rentals/my-rentals` - Get user's rented books
-- `POST /reviews` - Write a review
-- `GET /books/:id/reviews` - Get book reviews
+// Rental
+interface Rental {
+  _id: string;
+  user: string;
+  book: Book;
+  rentalStartDate: string;
+  rentalEndDate: string;
+  rentalDays: number;
+  totalPrice: number;
+  status: "active" | "expired" | "completed";
+  readingProgress: number;
+  daysRemaining: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
----
+// Review
+interface Review {
+  _id: string;
+  user: { username: string; avatar: string };
+  book: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  reviewText: string;
+  helpfulCount: number;
+  isVerifiedPurchase: boolean;
+  createdAt: string;
+}
 
-## 🔑 Getting Clerk Token
+// Payment
+interface Payment {
+  _id: string;
+  amount: number;
+  currency: string;
+  status: "succeeded" | "failed" | "pending" | "refunded";
+  createdAt: string;
+}
 
-### In React Component:
-```javascript
-import { useAuth } from "@clerk/clerk-react";
-
-function MyComponent() {
-  const { getToken } = useAuth();
-
-  const makeApiCall = async () => {
-    const token = await getToken();
-    
-    const response = await fetch('http://localhost:5000/api/clerk/me', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      }
-    });
-    
-    const data = await response.json();
-    console.log(data);
+// User
+interface User {
+  _id: string;
+  clerkId: string;
+  email: string;
+  username: string | null;
+  profile: {
+    bio: string;
+    avatar: string | null;
   };
-
-  return <button onClick={makeApiCall}>Get Profile</button>;
+  wallet: {
+    balance: number;
+    totalSpent: number;
+  };
+  preferences: {
+    theme: "light" | "dark";
+    notifications: boolean;
+  };
+  isAdmin: boolean;
+  isActive: boolean;
 }
 ```
 
 ---
 
-## 📝 Example Frontend Flow
+## ⚠️ Error Codes
 
-### 1. User Signs Up (Clerk handles this)
-```javascript
-// Clerk UI handles registration
-// User gets token automatically
-```
-
-### 2. App Initializes
-```javascript
-// 1. Check if user is logged in (Clerk)
-// 2. Call POST /clerk/sync-user
-// 3. Call GET /clerk/me
-// 4. Store user in state/context
-```
-
-### 3. User Updates Profile
-```javascript
-// User clicks "Edit Profile"
-// Form submission calls PUT /clerk/me
-// Response updates local state
-```
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad Request (validation failed) |
+| 401 | Unauthorized (missing/invalid token) |
+| 403 | Forbidden (not admin/not owner) |
+| 404 | Not Found |
+| 500 | Server Error |
 
 ---
 
-## 🚨 Error Handling
+## 🚀 Environment Variables
 
-### Common Errors:
-
-**401 Unauthorized** (Invalid/Missing token)
-```json
-{
-  "error": "Unauthorized"
-}
-```
-→ User needs to login again
-
-**400 Bad Request** (Missing required fields)
-```json
-{
-  "error": "Missing user information from Clerk"
-}
-```
-→ Check request body
-
-**404 Not Found** (User doesn't exist)
-```json
-{
-  "error": "User not found"
-}
-```
-→ User might need to sync first
-
-**500 Server Error**
-```json
-{
-  "error": "Failed to sync user",
-  "details": "error message"
-}
-```
-→ Backend issue - check logs
-
----
-
-## 🧪 Testing Endpoints
-
-### Using Fetch:
-```javascript
-// Sync User
-const response = await fetch('http://localhost:5000/api/clerk/sync-user', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  }
-});
-
-// Get Profile
-const response = await fetch('http://localhost:5000/api/clerk/me', {
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-});
-
-// Update Profile
-const response = await fetch('http://localhost:5000/api/clerk/me', {
-  method: 'PUT',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    username: 'new_name',
-    bio: 'New bio'
-  })
-});
-```
-
-### Using Postman:
-1. Get token from browser console (Clerk)
-2. Add to Authorization header as Bearer token
-3. Set request URL and method
-4. Send request
-
----
-
-## 📊 Data Types Reference
-
-### User Object
-```json
-{
-  "_id": "String (MongoDB ID)",
-  "clerkId": "String (from Clerk)",
-  "email": "String",
-  "username": "String or null",
-  "profile": {
-    "bio": "String",
-    "avatar": "String (URL) or null"
-  },
-  "wallet": {
-    "balance": "Number",
-    "totalSpent": "Number"
-  },
-  "preferences": {
-    "theme": "String (light|dark)",
-    "notifications": "Boolean"
-  },
-  "isActive": "Boolean",
-  "createdAt": "ISO Date String",
-  "updatedAt": "ISO Date String"
-}
-```
-
----
-
-
-## 🚀 Environment Variables Needed
-
-Make sure your `.env` has:
-```
+```env
 VITE_API_URL=http://localhost:5000/api
 VITE_CLERK_PUBLISHABLE_KEY=[from Clerk dashboard]
 ```
 
 ---
 
+## 💡 Common Patterns
 
+### Fetch with Auth
+```typescript
+const fetchWithAuth = async (url: string, options = {}) => {
+  const token = await getToken();
+  
+  return fetch(`${API_URL}${url}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+};
+```
 
-**Last Updated:** 2024-01-30
-**Version:** 1.0
-**Status:** Ready for Frontend Development
+### Error Handling
+```typescript
+try {
+  const res = await fetchWithAuth('/books');
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error);
+  }
+  return await res.json();
+} catch (error) {
+  console.error('API Error:', error);
+}
+```
+
+---
+
+**Last Updated:** 2025-12-04
+**Version:** 2.0 (Single consolidated doc)
+**Status:** Complete & Ready
