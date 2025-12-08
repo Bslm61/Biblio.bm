@@ -37,6 +37,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/rentals", rentalRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/users", userRoutes);
+
 
 // Health Check
 app.get("/api/health", (req, res) => {
