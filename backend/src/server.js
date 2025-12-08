@@ -8,6 +8,7 @@ import userRoutes from "./routes/userRoutes.js";
 import rentalRoutes from "./routes/rentalRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
 
@@ -60,19 +61,15 @@ app.use((req, res) => {
   });
 });
 
-// Error Handler
-app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.message);
-  res.status(err.status || 500).json({
-    error: err.message || "Server Error",
-    status: err.status || 500,
-  });
-});
+
 
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
+
+// Error Handler
+app.use(errorHandler);
 
 export default app;
